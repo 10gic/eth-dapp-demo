@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Ethereum DApp</title>
+</head>
+<body>
+<h1>Simple Ethereum DApp</h1>
+
+<button id="idConnectWallet">Connect wallet</button>
+<p id="idWalletAddress">Disconnected</p>
+
+<input type="text" id="idToAddress" placeholder="Enter recipient address"><br>
+<input type="text" id="idEthValue" placeholder="Enter amount in ETH"><br>
+<input type="text" id="idTxData" placeholder="Enter extra hex data"><br>
+<button id="idSendTransaction">Send transaction</button>
+<p id="idTxStatus"></p>
+
+<input type="text" id="idMsgToBeSign" placeholder="Enter message"><br>
+<button id="idPersonalSign">Personal sign</button>
+<p id="idMsgStatus"></p>
+
+<script>
+  let account = null;
+
+  // Add event listener to connect wallet button
+  document.getElementById('idConnectWallet').addEventListener('click', async () => {
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      account = accounts[0];
+      document.getElementById('idWalletAddress').innerText = `Connect to: ${account}`;
+      console.log(`Connect to: ${account}`);
+    } catch (error) {
+      console.error(`Connect failed: ${error.message}`);
+      alert(`Connect failed: ${error.message}`);
+    }
+  });
+
+  // Add event listener to send transaction button
+  document.getElementById('idSendTransaction').addEventListener('click', async () => {
+    if (!account) {
+      alert('Please connect wallet first');
+      return;
+    }
+
+    const ethValue = document.getElementById('idEthValue').value;
+    let weiValue;
+    if (!ethValue) {
+      weiValue = '0x0';
+    } else if (ethValue.startsWith('0x')) {
+      weiValue = ethValue; // Assume it's already in wei if it starts with '0x'
+    } else {
+      weiValue = '0x' + (parseFloat(ethValue) * 1e18).toString(16); // 1 ETH = 1e18 wei
+    }
+
+    try {
+      const txHash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [
+          {
+            from: account,
+            to: document.getElementById('idToAddress').value,
+            value: weiValue,
+            data: document.getElementById('idTxData').value,
+          },
+        ],
+      });
+
+      document.getElementById('idTxStatus').innerText = `Tx submitted: ${txHash}`;
+      console.log(`txHash: ${txHash}`);
+    } catch (error) {
+      console.error(`eth_sendTransaction failed: ${error.message}`);
+      alert(`eth_sendTransaction failed: ${error.message}`);
+    }
+  });
+
+  // Add event listener to personal sign button
+  document.getElementById('idPersonalSign').addEventListener('click', async () => {
+    if (!account) {
+      alert('Please connect wallet first');
+      return;
+    }
+
+    const msg = document.getElementById('idMsgToBeSign').value;
+    if (!msg) {
+      alert('Please enter message to sign');
+      return;
+    }
+
+    try {
+      const sign = await window.ethereum.request({
+        'method': 'personal_sign',
+        'params': [
+          msg,
+          account,
+        ],
+      });
+
+      document.getElementById('idMsgStatus').innerText = `Signature: ${sign}`;
+      console.log(`Signature: ${sign}`);
+    } catch (error) {
+      console.error(`personal_sign failed: ${error.message}`);
+      alert(`personal_sign failed: ${error.message}`);
+    }
+  });
+
+  window.ethereum.on('accountsChanged', (accounts) => {
+    if (accounts.length === 0) {
+      document.getElementById('idWalletAddress').innerText = 'Disconnected';
+      account = null;
+    } else {
+      account = accounts[0];
+      document.getElementById('idWalletAddress').innerText = `Connect to: ${account}`;
+    }
+  });
+
+  window.ethereum.on('chainChanged', (chainId) => {
+    console.log(`Chain has changed to: ${chainId}`);
+    alert(`Chain has changed to: ${chainId}`);
+    window.location.reload();
+  });
+</script>
+</body>
+</html>
